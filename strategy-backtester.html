@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strategy Backtester</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.1rem);
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #f3f0ec; --color-border: #d4d1ca; --color-divider: #dcd9d5;
+      --color-text: #28251d; --color-text-muted: #7a7974; --color-text-faint: #bab9b4; --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8; --color-success: #437a22; --color-warning: #964219; --color-error: #a12c7b;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06); --radius-lg: 0.75rem; --radius-xl: 1rem; --font-body: 'Satoshi', Inter, sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #1d1c1a; --color-border: #393836; --color-divider: #262523;
+      --color-text: #cdccca; --color-text-muted: #8f8d89; --color-text-faint: #5a5957; --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b; --color-success: #6daa45; --color-warning: #bb653b; --color-error: #d163a7;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { font-family: var(--font-body); color: var(--color-text); background: var(--color-bg); }
+    button, input, select { font: inherit; }
+    .app { display: grid; grid-template-columns: 340px 1fr; grid-template-rows: 72px 1fr; min-height: 100dvh; }
+    .sidebar { grid-row: 1 / -1; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--space-6); overflow-y: auto; }
+    .header { grid-column: 2; display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-6); border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 88%, transparent); }
+    .main { grid-column: 2; padding: var(--space-6); overflow-y: auto; }
+    .brand { display: flex; gap: var(--space-3); align-items: center; margin-bottom: var(--space-8); }
+    .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--color-primary-highlight); color: var(--color-primary); display: grid; place-items: center; }
+    .brand h1, .topbar-title h2 { margin: 0; }
+    .brand p, .topbar-title p, .muted { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .panel { background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); }
+    .panel + .panel { margin-top: var(--space-5); }
+    .panel-body { padding: var(--space-5); }
+    .section-title { font-size: var(--text-sm); letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-4); }
+    .field { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+    .field label { font-size: var(--text-sm); font-weight: 700; }
+    .field input, .field select { width: 100%; padding: .82rem .92rem; border-radius: var(--radius-lg); border: 1px solid var(--color-border); background: var(--color-surface-2); color: var(--color-text); }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+    .btnbar { display: grid; gap: var(--space-3); }
+    .btn { min-height: 44px; padding: .95rem 1.1rem; border-radius: 999px; border: 0; cursor: pointer; font-weight: 700; }
+    .btn-primary { background: var(--color-primary); color: white; }
+    .btn-secondary { background: var(--color-surface-offset); color: var(--color-text); border: 1px solid var(--color-border); }
+    .toggle { width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
+    .status { background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); padding: .8rem .9rem; border-radius: var(--radius-lg); font-size: var(--text-sm); line-height: 1.5; }
+    .grid { display: grid; gap: var(--space-5); }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+    .kpi { padding: var(--space-5); }
+    .kpi .label { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .kpi .value { font-size: var(--text-xl); font-weight: 900; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
+    .kpi .sub { color: var(--color-text-muted); font-size: var(--text-xs); margin-top: var(--space-2); }
+    .charts { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: var(--space-5); }
+    .card-title { display: flex; justify-content: space-between; align-items: baseline; padding: var(--space-5); border-bottom: 1px solid var(--color-divider); gap: var(--space-3); }
+    .card-title h3 { margin: 0; font-size: var(--text-lg); }
+    .card-title span { color: var(--color-text-muted); font-size: var(--text-sm); }
+    #equityChart, #tradeChart { min-height: 360px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    th, td { padding: .9rem 1rem; text-align: left; border-bottom: 1px solid var(--color-divider); font-variant-numeric: tabular-nums lining-nums; }
+    th { color: var(--color-text-muted); font-weight: 700; background: var(--color-surface); position: sticky; top: 0; }
+    .pill { display: inline-flex; align-items: center; padding: .28rem .62rem; border-radius: 999px; font-size: var(--text-xs); font-weight: 700; }
+    .buy { background: color-mix(in srgb, var(--color-success) 16%, transparent); color: var(--color-success); }
+    .sell { background: color-mix(in srgb, var(--color-warning) 16%, transparent); color: var(--color-warning); }
+    .info { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); }
+    .empty { padding: var(--space-10); text-align: center; color: var(--color-text-muted); }
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+      .sidebar { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--color-border); }
+      .header, .main { grid-column: auto; }
+      .kpis, .charts, .row-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 17 9 12 13 15 20 7" /><path d="M17 7h3v3" /></svg>
+        </div>
+        <div>
+          <h1>Strategy Lab</h1>
+          <p>Alpha Vantage Live-Daten</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <div class="section-title">Datenquelle</div>
+          <div class="field">
+            <label for="apikey">API-Key</label>
+            <input id="apikey" value="demo" placeholder="Dein Alpha-Vantage-Key" />
+          </div>
+          <div class="field">
+            <label for="symbol">Symbol</label>
+            <input id="symbol" value="IBM" placeholder="IBM, AAPL, MSFT" />
+          </div>
+          <div class="status" id="statusBox">Mit dem Demo-Key funktioniert nur IBM. Für andere Symbole brauchst du einen eigenen Alpha-Vantage-Key.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <div class="section-title">Strategie</div>
+          <div class="field">
+            <label for="variant">Variante laden</label>
+            <select id="variant">
+              <option value="basis">Basis</option>
+              <option value="v_mid">Mittelweg</option>
+              <option value="v2_sharp">Sharp</option>
+              <option value="v1_trend">Trend</option>
+              <option value="v3_premium_filter">Premium Filter</option>
+            </select>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="rsiBuy">RSI Buy</label><input id="rsiBuy" type="number" value="30" /></div>
+            <div class="field"><label for="rsiSell">RSI Sell</label><input id="rsiSell" type="number" value="70" /></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="crossSell">Cross Sell RSI</label><input id="crossSell" type="number" value="65" /></div>
+            <div class="field"><label for="premiumMaxRsi">Premium max RSI</label><input id="premiumMaxRsi" type="number" value="100" /></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="lightTarget">Light Buy Ziel</label><input id="lightTarget" type="number" step="0.05" value="0.40" /></div>
+            <div class="field"><label for="premiumTarget">Premium Buy Ziel</label><input id="premiumTarget" type="number" step="0.05" value="0.80" /></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label for="sellReduction">Sell Reduktion</label><input id="sellReduction" type="number" step="0.05" value="0.40" /></div>
+            <div class="field"><label for="minTradeValue">Min Trade €/$</label><input id="minTradeValue" type="number" step="1" value="25" /></div>
+          </div>
+          <div class="field">
+            <label for="emaDirection">Premium EMA Filter</label>
+            <select id="emaDirection">
+              <option value="below">Kurs unter EMA200</option>
+              <option value="above">Kurs über EMA200</option>
+            </select>
+          </div>
+          <div class="btnbar">
+            <button class="btn btn-primary" id="runBtn">Live-Daten laden</button>
+            <button class="btn btn-secondary" id="presetBtn">Variante laden</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <header class="header">
+      <div class="topbar-title">
+        <h2>Backtesting Dashboard</h2>
+        <p>Historische Tagesdaten via TIME_SERIES_DAILY_ADJUSTED.</p>
+      </div>
+      <button class="toggle" data-theme-toggle aria-label="Theme wechseln">◐</button>
+    </header>
+
+    <main class="main">
+      <div class="grid">
+        <section class="kpis" id="kpis"></section>
+        <section class="charts">
+          <div class="panel">
+            <div class="card-title"><h3>Equity Verlauf</h3><span id="equityMeta">Noch kein Lauf</span></div>
+            <div id="equityChart"></div>
+          </div>
+          <div class="panel">
+            <div class="card-title"><h3>Signalmix</h3><span>Anzahl echte Aktionen</span></div>
+            <div id="tradeChart"></div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="card-title"><h3>Letzte Aktionen</h3><span id="tradeCountLabel">0 Trades</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Datum</th><th>Signal</th><th>Aktion</th><th>Preis</th><th>Stück</th><th>Cash</th><th>Position</th></tr></thead>
+              <tbody id="tradesBody"><tr><td class="empty" colspan="7">Noch keine Daten geladen.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const themeButton = document.querySelector('[data-theme-toggle]');
+    let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    themeButton.addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    });
+
+    const presets = {
+      basis: { rsiBuy: 30, rsiSell: 70, crossSell: 65, premiumMaxRsi: 100, emaDirection: 'below', lightTarget: 0.4, premiumTarget: 0.8, sellReduction: 0.4 },
+      v_mid: { rsiBuy: 28, rsiSell: 72, crossSell: 68, premiumMaxRsi: 60, emaDirection: 'below', lightTarget: 0.4, premiumTarget: 0.8, sellReduction: 0.4 },
+      v2_sharp: { rsiBuy: 25, rsiSell: 75, crossSell: 70, premiumMaxRsi: 100, emaDirection: 'below', lightTarget: 0.4, premiumTarget: 0.8, sellReduction: 0.4 },
+      v1_trend: { rsiBuy: 30, rsiSell: 70, crossSell: 65, premiumMaxRsi: 100, emaDirection: 'above', lightTarget: 0.4, premiumTarget: 0.8, sellReduction: 0.4 },
+      v3_premium_filter: { rsiBuy: 30, rsiSell: 70, crossSell: 65, premiumMaxRsi: 55, emaDirection: 'below', lightTarget: 0.4, premiumTarget: 0.8, sellReduction: 0.4 }
+    };
+
+    const ids = ['apikey','symbol','variant','rsiBuy','rsiSell','crossSell','premiumMaxRsi','lightTarget','premiumTarget','sellReduction','minTradeValue','emaDirection'];
+    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+    function applyPreset() {
+      const p = presets[el.variant.value];
+      if (!p) return;
+      Object.entries(p).forEach(([key, value]) => { el[key].value = value; });
+    }
+    document.getElementById('presetBtn').addEventListener('click', applyPreset);
+    el.variant.addEventListener('change', applyPreset);
+
+    function fmt(n, digits = 2) { return Number(n).toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
+    function seedKpis() {
+      document.getElementById('kpis').innerHTML = [
+        ['Quelle', 'Alpha Vantage', 'Daily Adjusted API'],
+        ['API-Key', el.apikey.value === 'demo' ? 'demo' : 'gesetzt', el.apikey.value === 'demo' ? 'nur IBM' : 'eigener Key'],
+        ['Symbol', el.symbol.value.toUpperCase(), 'bereit zum Laden'],
+        ['Startkapital', '1.000,00 €/$', 'fixer Vergleichswert']
+      ].map(([label, value, sub]) => `<article class="panel kpi"><div class="label">${label}</div><div class="value" style="font-size:var(--text-lg)">${value}</div><div class="sub">${sub}</div></article>`).join('');
+    }
+
+    function rsiSeries(prices, period = 14) {
+      const out = new Array(prices.length).fill(null);
+      if (prices.length < period + 1) return out;
+      const deltas = [];
+      for (let i = 1; i < prices.length; i++) deltas.push(prices[i] - prices[i - 1]);
+      const gains = deltas.map(x => Math.max(x, 0));
+      const losses = deltas.map(x => Math.max(-x, 0));
+      let avgGain = gains.slice(0, period).reduce((a,b)=>a+b,0) / period;
+      let avgLoss = losses.slice(0, period).reduce((a,b)=>a+b,0) / period;
+      out[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+      for (let i = period + 1; i < prices.length; i++) {
+        avgGain = ((avgGain * (period - 1)) + gains[i - 1]) / period;
+        avgLoss = ((avgLoss * (period - 1)) + losses[i - 1]) / period;
+        out[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+      }
+      return out;
+    }
+    function rollingMean(values, period) {
+      return values.map((_, i) => {
+        const window = values.slice(Math.max(0, i - period + 1), i + 1).filter(v => v != null);
+        return window.length === period ? window.reduce((a,b)=>a+b,0) / period : null;
+      });
+    }
+    function emaSeries(prices, period) {
+      if (!prices.length) return [];
+      const alpha = 2 / (period + 1);
+      const out = [prices[0]];
+      let current = prices[0];
+      for (let i = 1; i < prices.length; i++) { current = alpha * prices[i] + (1 - alpha) * current; out.push(current); }
+      return out;
+    }
+
+    async function fetchAlphaVantage(symbol, apiKey) {
+      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(symbol)}&outputsize=full&apikey=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Alpha-Vantage-Anfrage fehlgeschlagen.');
+      const data = await res.json();
+      if (data['Error Message']) throw new Error('Unbekanntes Symbol oder ungültige Anfrage.');
+      if (data['Information']) throw new Error(data['Information']);
+      if (data['Note']) throw new Error(data['Note']);
+      const series = data['Time Series (Daily)'];
+      if (!series) throw new Error('Keine Zeitreihe in der API-Antwort gefunden.');
+      return Object.entries(series)
+        .map(([date, row]) => ({ date, close: Number(row['5. adjusted close'] || row['4. close']) }))
+        .filter(r => Number.isFinite(r.close))
+        .sort((a,b) => new Date(a.date) - new Date(b.date));
+    }
+
+    function getConfig() {
+      return {
+        symbol: el.symbol.value.trim().toUpperCase(), apiKey: el.apikey.value.trim(), rsiBuy: Number(el.rsiBuy.value), rsiSell: Number(el.rsiSell.value), crossSell: Number(el.crossSell.value), premiumMaxRsi: Number(el.premiumMaxRsi.value), lightTarget: Number(el.lightTarget.value), premiumTarget: Number(el.premiumTarget.value), sellReduction: Number(el.sellReduction.value), minTradeValue: Number(el.minTradeValue.value), emaDirection: el.emaDirection.value, startCapital: 1000
+      };
+    }
+
+    function runBacktest(rows, cfg) {
+      const closes = rows.map(r => r.close), dates = rows.map(r => r.date), rsi = rsiSeries(closes, 14), rsiMa = rollingMean(rsi, 7), ema = emaSeries(closes, 200);
+      let cash = cfg.startCapital, shares = 0;
+      const trades = [], equityCurve = [], counts = { premium_buy: 0, light_buy: 0, light_sell: 0, crossdown_sell: 0 };
+      for (let i = 220; i < closes.length; i++) {
+        const price = closes[i], equity = cash + shares * price, investedValue = shares * price;
+        let signal = 'hold', action = 'Halten', sharesChange = 0;
+        if ([rsi[i], rsi[i-1], rsiMa[i], rsiMa[i-1], ema[i]].some(v => v == null)) { equityCurve.push({ date: dates[i], equity }); continue; }
+        const premiumBuy = ((cfg.emaDirection === 'below' ? price < ema[i] : price > ema[i]) && rsi[i] < cfg.premiumMaxRsi && rsi[i-1] < rsiMa[i-1] && rsi[i] > rsiMa[i]);
+        const crossdownSell = rsi[i] > cfg.crossSell && rsi[i-1] > rsiMa[i-1] && rsi[i] < rsiMa[i];
+        const lightBuy = rsi[i] < cfg.rsiBuy;
+        const lightSell = rsi[i] > cfg.rsiSell;
+        if (premiumBuy) signal = 'premium_buy'; else if (crossdownSell) signal = 'crossdown_sell'; else if (lightBuy) signal = 'light_buy'; else if (lightSell) signal = 'light_sell';
+        if (signal === 'premium_buy') {
+          const buyValue = Math.min(equity * cfg.premiumTarget - investedValue, cash);
+          if (buyValue > cfg.minTradeValue) { sharesChange = buyValue / price; shares += sharesChange; cash -= buyValue; action = 'Premium Kauf'; counts.premium_buy++; }
+        } else if (signal === 'light_buy') {
+          const buyValue = Math.min(equity * cfg.lightTarget - investedValue, cash);
+          if (buyValue > cfg.minTradeValue) { sharesChange = buyValue / price; shares += sharesChange; cash -= buyValue; action = 'Leichter Kauf'; counts.light_buy++; }
+        } else if (signal === 'light_sell') {
+          const sellValue = Math.min(equity * cfg.sellReduction, investedValue);
+          if (sellValue > cfg.minTradeValue) { sharesChange = -(sellValue / price); shares += sharesChange; cash += sellValue; action = 'Leichter Verkauf'; counts.light_sell++; }
+        } else if (signal === 'crossdown_sell') {
+          const sellValue = Math.min(equity * cfg.sellReduction, investedValue);
+          if (sellValue > cfg.minTradeValue) { sharesChange = -(sellValue / price); shares += sharesChange; cash += sellValue; action = 'Crossover Verkauf'; counts.crossdown_sell++; }
+        }
+        if (action !== 'Halten') trades.push({ date: dates[i], signal, action, price, sharesChange, cashAfter: cash, positionAfter: shares * price });
+        equityCurve.push({ date: dates[i], equity: cash + shares * price });
+      }
+      const finalPrice = closes.at(-1), endCapital = cash + shares * finalPrice, returnPct = ((endCapital - cfg.startCapital) / cfg.startCapital) * 100, bhEndCapital = (cfg.startCapital / closes[0]) * finalPrice, bhReturnPct = ((bhEndCapital - cfg.startCapital) / cfg.startCapital) * 100;
+      return { startDate: dates[0], endDate: dates.at(-1), endCapital, returnPct, trades, equityCurve, counts, buyHoldEnd: bhEndCapital, buyHoldReturn: bhReturnPct, symbol: cfg.symbol };
+    }
+
+    function renderKPIs(result) {
+      document.getElementById('kpis').innerHTML = [
+        ['Strategie Endkapital', `${fmt(result.endCapital)} €/$`, `${fmt(result.returnPct)} %`],
+        ['Buy & Hold', `${fmt(result.buyHoldEnd)} €/$`, `${fmt(result.buyHoldReturn)} %`],
+        ['Echte Trades', `${result.trades.length}`, `${result.startDate} bis ${result.endDate}`],
+        ['Outperformance', `${fmt(result.endCapital - result.buyHoldEnd)} €/$`, `${fmt(result.returnPct - result.buyHoldReturn)} %-Pkt.`]
+      ].map(([label, value, sub]) => `<article class="panel kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></article>`).join('');
+    }
+
+    function renderTrades(result) {
+      document.getElementById('tradeCountLabel').textContent = `${result.trades.length} Trades`;
+      const shown = result.trades.slice(-40).reverse();
+      document.getElementById('tradesBody').innerHTML = shown.length ? shown.map(t => `<tr><td>${t.date}</td><td><span class="pill ${t.signal.includes('buy') ? 'buy' : 'sell'}">${t.signal}</span></td><td>${t.action}</td><td>${fmt(t.price)}</td><td>${fmt(t.sharesChange, 4)}</td><td>${fmt(t.cashAfter)}</td><td>${fmt(t.positionAfter)}</td></tr>`).join('') : '<tr><td class="empty" colspan="7">Keine echten Aktionen im Zeitraum.</td></tr>';
+    }
+
+    function renderCharts(result) {
+      document.getElementById('equityMeta').textContent = `${result.symbol} · ${result.startDate} bis ${result.endDate}`;
+      const fg = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
+      Plotly.newPlot('equityChart', [
+        { x: result.equityCurve.map(d => d.date), y: result.equityCurve.map(d => d.equity), type: 'scatter', mode: 'lines', name: 'Strategie', line: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim(), width: 3 } },
+        { x: [result.startDate, result.endDate], y: [1000, result.buyHoldEnd], type: 'scatter', mode: 'lines', name: 'Buy & Hold', line: { color: '#888', width: 2, dash: 'dot' } }
+      ], { margin: { l: 48, r: 20, t: 20, b: 40 }, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { family: 'Satoshi, sans-serif', color: fg }, xaxis: { gridcolor: 'rgba(127,127,127,0.12)' }, yaxis: { gridcolor: 'rgba(127,127,127,0.12)' }, legend: { orientation: 'h' } }, { responsive: true, displayModeBar: false });
+      Plotly.newPlot('tradeChart', [{ type: 'pie', labels: ['Premium Buy','Light Buy','Light Sell','Crossdown Sell'], values: [result.counts.premium_buy, result.counts.light_buy, result.counts.light_sell, result.counts.crossdown_sell], hole: 0.55, marker: { colors: ['#01696f','#437a22','#964219','#a12c7b'] }, textinfo: 'label+value' }], { margin: { l: 20, r: 20, t: 20, b: 20 }, paper_bgcolor: 'transparent', font: { family: 'Satoshi, sans-serif', color: fg } }, { responsive: true, displayModeBar: false });
+    }
+
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const cfg = getConfig();
+      const btn = document.getElementById('runBtn');
+      const status = document.getElementById('statusBox');
+      if (!cfg.apiKey) { status.textContent = 'Bitte API-Key eintragen.'; return; }
+      btn.disabled = true; btn.textContent = 'Lädt Daten ...'; status.textContent = 'Alpha Vantage wird abgefragt ...';
+      try {
+        const rows = await fetchAlphaVantage(cfg.symbol, cfg.apiKey);
+        if (rows.length < 250) throw new Error('Zu wenig Daten für RSI und EMA200 gefunden.');
+        const result = runBacktest(rows, cfg);
+        renderKPIs(result); renderTrades(result); renderCharts(result);
+        status.textContent = `Geladen: ${cfg.symbol} mit ${rows.length} Tageswerten.`;
+        btn.textContent = 'Live-Daten neu laden';
+      } catch (err) {
+        status.textContent = err.message;
+        document.getElementById('kpis').innerHTML = `<article class="panel kpi" style="grid-column: 1 / -1;"><div class="label">Fehler</div><div class="value" style="font-size:var(--text-lg)">${err.message}</div><div class="sub">Mit demo funktioniert nur IBM; sonst brauchst du einen eigenen Key.</div></article>`;
+        document.getElementById('tradesBody').innerHTML = '<tr><td class="empty" colspan="7">Kein Ergebnis.</td></tr>';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    applyPreset();
+    seedKpis();
+  </script>
+</body>
+</html>
