@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>strategy-lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --font-body: 'Instrument Sans', Inter, system-ui, sans-serif;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #f3f0ec;
+      --color-text: #28251d; --color-text-muted: #6f6d67; --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
+      --color-success: #437a22; --color-error: #a12c7b; --color-warning: #964219;
+      --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+      --content-wide: 1320px;
+      --border: rgba(0,0,0,0.1);
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #1d1c1a;
+      --color-text: #cdccca; --color-text-muted: #9a9895; --color-text-inverse: #2b2a28;
+      --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
+      --color-success: #6daa45; --color-error: #d163a7; --color-warning: #bb653b;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font-body); font-size: var(--text-base); color: var(--color-text); background: var(--color-bg); }
+    input, select, button { font: inherit; color: inherit; }
+    .app { max-width: var(--content-wide); margin: 0 auto; padding: var(--space-6); }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
+    .brand { display: flex; align-items: center; gap: var(--space-3); }
+    .logo { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: linear-gradient(135deg, var(--color-primary-highlight), var(--color-surface-offset)); border: 1px solid var(--border); }
+    .brand h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: var(--text-xl); }
+    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .theme-toggle { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--color-surface); cursor: pointer; }
+    .layout { display: grid; grid-template-columns: 390px minmax(0,1fr); gap: var(--space-6); }
+    .panel { background: var(--color-surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); }
+    .sidebar { padding: var(--space-5); position: sticky; top: var(--space-6); align-self: start; }
+    .content { display: grid; gap: var(--space-6); }
+    .section-title { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-grid { display: grid; gap: var(--space-4); }
+    label { display: grid; gap: 0.35rem; font-size: var(--text-sm); color: var(--color-text-muted); }
+    input, select { width: 100%; padding: 0.8rem 0.9rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--color-surface-2); }
+    .check { display: flex; gap: 0.65rem; align-items: center; }
+    .check input { width: auto; }
+    .hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .btn { min-height: 44px; padding: 0.85rem 1.15rem; border-radius: var(--radius-full); border: 0; cursor: pointer; }
+    .btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--color-surface-offset); border: 1px solid var(--border); }
+    .status { margin-top: var(--space-4); padding: 0.9rem 1rem; border-radius: var(--radius-lg); background: var(--color-surface-offset); color: var(--color-text-muted); font-size: var(--text-sm); }
+    .status.error { color: var(--color-error); }
+    .status.success { color: var(--color-success); }
+    .hero, .chart-card, .table-card, .rules-card { padding: var(--space-5); }
+    .hero h2 { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: var(--text-xl); font-weight: 400; }
+    .hero p { margin: 0; color: var(--color-text-muted); max-width: 65ch; }
+    .pill { display: inline-flex; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); background: var(--color-primary-highlight); color: var(--color-primary); font-size: var(--text-xs); margin-bottom: var(--space-3); }
+    .metrics { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: var(--space-4); }
+    .metric { padding: var(--space-5); }
+    .metric .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+    .metric .value { margin-top: var(--space-2); font-size: var(--text-lg); font-weight: 700; }
+    canvas { width: 100% !important; height: 380px !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.8rem 0.5rem; border-bottom: 1px solid var(--border); font-size: var(--text-sm); vertical-align: top; }
+    th { color: var(--color-text-muted); }
+    .table-wrap { overflow: auto; }
+    .rules { display: grid; gap: var(--space-3); }
+    .rules p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .badge { display: inline-flex; padding: 0.2rem 0.55rem; border-radius: var(--radius-full); font-size: var(--text-xs); }
+    .badge.gold { background: rgba(212,164,0,0.14); color: #b8860b; }
+    .badge.good { background: rgba(46,139,87,0.14); color: #2e8b57; }
+    .badge.medium { background: rgba(214,40,40,0.10); color: #a94442; }
+    @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; } .metrics { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+    @media (max-width: 720px) { .app { padding: var(--space-4); } .metrics { grid-template-columns: 1fr; } .actions { flex-direction: column; } .btn { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-label="Strategy Lab Logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 16L9 11L13 15L20 8"></path>
+            <path d="M18 8H20V10"></path>
+            <path d="M4 20H20"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Strategy Lab</h1>
+          <p>Backtester mit Twelve Data, Sparplan und Crykas-Preset</p>
+        </div>
+      </div>
+      <button class="theme-toggle" data-theme-toggle aria-label="Theme umschalten">◐</button>
+    </header>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <p class="section-title">Daten & Strategie</p>
+        <div class="form-grid">
+          <label>API-Key
+            <input id="apiKey" type="text" placeholder="Twelve Data API-Key">
+          </label>
+          <div class="hint">Der Key bleibt nur in dieser Browser-Sitzung und wird nicht gespeichert.</div>
+          <label>Symbol
+            <input id="symbol" type="text" value="AAPL">
+          </label>
+          <label>Anfangskapital (€)
+            <input id="initialCapital" type="number" min="10" max="10000000" step="10" value="1000">
+          </label>
+          <label>Monatlicher Sparplan (€)
+            <input id="monthlyContribution" type="number" min="0" max="100000" step="10" value="100">
+          </label>
+          <label>Jahre Historie
+            <input id="years" type="number" min="1" max="15" step="1" value="5">
+          </label>
+          <label>Preset
+            <select id="variant">
+              <option value="balanced">Balanced</option>
+              <option value="defensive">Defensive</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="trend">Trend</option>
+              <option value="crykas">Crykas</option>
+            </select>
+          </label>
+          <label>RSI Buy unter
+            <input id="rsiBuy" type="number" min="1" max="99" step="1" value="35">
+          </label>
+          <label>RSI Sell über
+            <input id="rsiSell" type="number" min="1" max="99" step="1" value="67">
+          </label>
+          <label>RSI-MA Länge
+            <input id="rsiMaLen" type="number" min="2" max="50" step="1" value="9">
+          </label>
+          <label>SMA Länge
+            <input id="smaLen" type="number" min="5" max="300" step="1" value="50">
+          </label>
+          <label>EMA-Länge
+            <input id="emaLen" type="number" min="5" max="300" step="1" value="200">
+          </label>
+          <label>Buy-Einsatz (% Cash)
+            <input id="buyPct" type="number" min="1" max="100" step="1" value="25">
+          </label>
+          <label>Sell-Anteil (% Position)
+            <input id="sellPct" type="number" min="1" max="100" step="1" value="25">
+          </label>
+          <label class="check"><input id="emaFilter" type="checkbox" checked> Nur kaufen, wenn Kurs über EMA liegt</label>
+          <label class="check"><input id="showTradeMarkers" type="checkbox" checked> Käufe und Verkäufe im Chart zeigen</label>
+          <div class="actions">
+            <button class="btn btn-primary" id="runBtn">Backtest starten</button>
+            <button class="btn btn-secondary" id="presetBtn">Preset laden</button>
+          </div>
+          <div id="status" class="status">Bereit. Trage deinen Twelve-Data-Key ein und starte den Backtest.</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="panel hero">
+          <span class="pill">Kostenlose Datenquelle</span>
+          <h2>Strategie gegen Buy-and-Hold, Sparplan und Crykas-Logik</h2>
+          <p>Die App kann jetzt neben den normalen RSI/EMA-Presets auch ein Crykas-Preset mit RSI, RSI-MA-Kreuzung und SMA50-Regeln ausführen.</p>
+        </section>
+
+        <section class="metrics">
+          <div class="panel metric"><div class="label">Endwert</div><div class="value" id="mFinal">—</div></div>
+          <div class="panel metric"><div class="label">Return</div><div class="value" id="mReturn">—</div></div>
+          <div class="panel metric"><div class="label">Buy & Hold</div><div class="value" id="mBench">—</div></div>
+          <div class="panel metric"><div class="label">Sparplan</div><div class="value" id="mDca">—</div></div>
+          <div class="panel metric"><div class="label">Trades</div><div class="value" id="mTrades">—</div></div>
+          <div class="panel metric"><div class="label">Preset</div><div class="value" id="mPreset">—</div></div>
+        </section>
+
+        <section class="panel rules-card">
+          <p class="section-title">Crykas-Regeln</p>
+          <div class="rules">
+            <p><span class="badge gold">Gold</span> RSI unter 30 und RSI kreuzt den RSI-MA von unten nach oben.</p>
+            <p><span class="badge good">Gut</span> RSI unter 30 ohne bestätigtes Goldsignal.</p>
+            <p><span class="badge medium">Mittel</span> RSI über 30, aber RSI kreuzt den RSI-MA von unten nach oben.</p>
+            <p>Ausstieg: RSI über 50 und Kurs über SMA50; aggressiver Ausstieg bei RSI über 70.</p>
+          </div>
+        </section>
+
+        <section class="panel chart-card">
+          <p class="section-title">Equity-Kurve</p>
+          <canvas id="equityChart"></canvas>
+        </section>
+
+        <section class="panel table-card">
+          <p class="section-title">Alle Trades</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Signal</th>
+                  <th>Aktion</th>
+                  <th>Preis</th>
+                  <th>Trade-Wert</th>
+                  <th>Cash</th>
+                  <th>Position</th>
+                </tr>
+              </thead>
+              <tbody id="tradesBody">
+                <tr><td colspan="7">Noch keine Berechnung gestartet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.setAttribute('data-theme', theme);
+    document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', theme);
+    });
+
+    const presets = {
+      balanced: { rsiBuy: 35, rsiSell: 67, emaLen: 200, buyPct: 25, sellPct: 25, emaFilter: true, rsiMaLen: 9, smaLen: 50 },
+      defensive: { rsiBuy: 30, rsiSell: 70, emaLen: 220, buyPct: 20, sellPct: 20, emaFilter: true, rsiMaLen: 9, smaLen: 50 },
+      aggressive: { rsiBuy: 40, rsiSell: 62, emaLen: 100, buyPct: 35, sellPct: 35, emaFilter: false, rsiMaLen: 7, smaLen: 50 },
+      trend: { rsiBuy: 45, rsiSell: 60, emaLen: 150, buyPct: 30, sellPct: 20, emaFilter: true, rsiMaLen: 9, smaLen: 50 },
+      crykas: { rsiBuy: 30, rsiSell: 50, emaLen: 200, buyPct: 30, sellPct: 25, emaFilter: false, rsiMaLen: 9, smaLen: 50 }
+    };
+
+    const setStatus = (msg, kind = '') => {
+      const el = document.getElementById('status');
+      el.className = `status ${kind}`.trim();
+      el.textContent = msg;
+    };
+
+    document.getElementById('presetBtn').addEventListener('click', () => {
+      const key = document.getElementById('variant').value;
+      const p = presets[key];
+      document.getElementById('rsiBuy').value = p.rsiBuy;
+      document.getElementById('rsiSell').value = p.rsiSell;
+      document.getElementById('emaLen').value = p.emaLen;
+      document.getElementById('buyPct').value = p.buyPct;
+      document.getElementById('sellPct').value = p.sellPct;
+      document.getElementById('emaFilter').checked = p.emaFilter;
+      document.getElementById('rsiMaLen').value = p.rsiMaLen;
+      document.getElementById('smaLen').value = p.smaLen;
+      setStatus(`Preset ${key} geladen.`, 'success');
+    });
+
+    function ema(values, period) {
+      const out = Array(values.length).fill(null);
+      const k = 2 / (period + 1);
+      let prev = null;
+      for (let i = 0; i < values.length; i++) {
+        prev = prev == null ? values[i] : values[i] * k + prev * (1 - k);
+        out[i] = prev;
+      }
+      return out;
+    }
+
+    function sma(values, period) {
+      const out = Array(values.length).fill(null);
+      let sum = 0;
+      for (let i = 0; i < values.length; i++) {
+        sum += values[i] ?? 0;
+        if (i >= period) sum -= values[i - period] ?? 0;
+        if (i >= period - 1) out[i] = sum / period;
+      }
+      return out;
+    }
+
+    function rsi(values, period = 14) {
+      const out = Array(values.length).fill(null);
+      if (values.length <= period) return out;
+      let gains = 0;
+      let losses = 0;
+      for (let i = 1; i <= period; i++) {
+        const diff = values[i] - values[i - 1];
+        if (diff >= 0) gains += diff; else losses -= diff;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      out[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+      for (let i = period + 1; i < values.length; i++) {
+        const diff = values[i] - values[i - 1];
+        const gain = Math.max(diff, 0);
+        const loss = Math.max(-diff, 0);
+        avgGain = ((avgGain * (period - 1)) + gain) / period;
+        avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+        out[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+      }
+      return out;
+    }
+
+    async function fetchDailyData(symbol, years, apiKey) {
+      const end = new Date();
+      const start = new Date();
+      start.setFullYear(end.getFullYear() - years);
+      const url = new URL('https://api.twelvedata.com/time_series');
+      url.searchParams.set('symbol', symbol);
+      url.searchParams.set('interval', '1day');
+      url.searchParams.set('outputsize', String(Math.min(5000, Math.max(400, years * 260 + 50))));
+      url.searchParams.set('format', 'JSON');
+      url.searchParams.set('apikey', apiKey);
+      const response = await fetch(url.toString());
+      const data = await response.json();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (data.status === 'error') throw new Error(data.message || 'API-Fehler');
+      if (!Array.isArray(data.values)) throw new Error('Keine Kursdaten gefunden.');
+      const rows = data.values
+        .map(v => ({ date: v.datetime.slice(0, 10), close: Number(v.close) }))
+        .filter(v => Number.isFinite(v.close) && v.date >= start.toISOString().slice(0, 10))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (rows.length < 60) throw new Error('Zu wenige historische Daten für einen sinnvollen Backtest.');
+      return rows;
+    }
+
+    function crossesUp(aPrev, aNow, bPrev, bNow) {
+      return aPrev != null && aNow != null && bPrev != null && bNow != null && aPrev <= bPrev && aNow > bNow;
+    }
+
+    function backtest(rows, params) {
+      const dates = rows.map(r => r.date);
+      const closes = rows.map(r => r.close);
+      const emaArr = ema(closes, params.emaLen);
+      const smaArr = sma(closes, params.smaLen);
+      const rsiArr = rsi(closes, 14);
+      const rsiMaArr = sma(rsiArr.map(v => v == null ? 0 : v), params.rsiMaLen).map((v, i) => rsiArr[i] == null ? null : v);
+
+      let cash = params.initialCapital;
+      let shares = 0;
+      const equity = [];
+      const trades = [];
+      const markerBuys = [];
+      const markerSells = [];
+
+      const benchShares = params.initialCapital / closes[0];
+      const bench = closes.map(price => benchShares * price);
+
+      let dcaShares = params.initialCapital / closes[0];
+      let investedDca = params.initialCapital;
+      const dca = [];
+      let lastContributionMonth = dates[0].slice(0, 7);
+
+      for (let i = 0; i < closes.length; i++) {
+        const price = closes[i];
+        const monthKey = dates[i].slice(0, 7);
+        const rsiNow = rsiArr[i];
+        const rsiPrev = i > 0 ? rsiArr[i - 1] : null;
+        const rsiMaNow = rsiMaArr[i];
+        const rsiMaPrev = i > 0 ? rsiMaArr[i - 1] : null;
+        const smaNow = smaArr[i];
+
+        if (i > 0 && monthKey !== lastContributionMonth) {
+          if (params.monthlyContribution >= 10) {
+            dcaShares += params.monthlyContribution / price;
+            investedDca += params.monthlyContribution;
+          }
+          lastContributionMonth = monthKey;
+        }
+
+        let buySignal = false;
+        let sellSignal = false;
+        let buyLabel = 'RSI Buy';
+        let sellLabel = 'RSI Sell';
+        let buyPct = params.buyPct;
+        let sellPct = params.sellPct;
+
+        if (params.variant === 'crykas') {
+          const crossUp = crossesUp(rsiPrev, rsiNow, rsiMaPrev, rsiMaNow);
+          const goldEntry = rsiNow != null && rsiNow < 30 && crossUp;
+          const goodEntry = rsiNow != null && rsiNow < 30;
+          const mediumEntry = rsiNow != null && rsiNow >= 30 && crossUp;
+          const normalExit = rsiNow != null && rsiNow > 50 && smaNow != null && price > smaNow;
+          const aggressiveExit = rsiNow != null && rsiNow > 70;
+
+          if (goldEntry) {
+            buySignal = true;
+            buyLabel = 'Crykas Gold';
+            buyPct = 45;
+          } else if (goodEntry) {
+            buySignal = true;
+            buyLabel = 'Crykas Gut';
+            buyPct = 25;
+          } else if (mediumEntry) {
+            buySignal = true;
+            buyLabel = 'Crykas Mittel';
+            buyPct = 18;
+          }
+
+          if (aggressiveExit) {
+            sellSignal = true;
+            sellLabel = 'Crykas Aggro Exit';
+            sellPct = 50;
+          } else if (normalExit) {
+            sellSignal = true;
+            sellLabel = 'Crykas Exit';
+            sellPct = 25;
+          }
+        } else {
+          buySignal = rsiNow != null && rsiNow < params.rsiBuy;
+          sellSignal = rsiNow != null && rsiNow > params.rsiSell;
+        }
+
+        const emaOk = !params.emaFilter || (emaArr[i] != null && price > emaArr[i]);
+
+        if (buySignal && emaOk && cash > 0) {
+          const tradeValue = cash * (buyPct / 100);
+          if (tradeValue >= 10) {
+            const qty = tradeValue / price;
+            shares += qty;
+            cash -= tradeValue;
+            trades.push({ date: dates[i], signal: buyLabel, action: 'Kauf', price, tradeValue, cash, position: shares * price, index: i });
+            markerBuys.push({ x: dates[i], y: cash + shares * price });
+          }
+        } else if (sellSignal && shares > 0) {
+          const qty = shares * (sellPct / 100);
+          const tradeValue = qty * price;
+          if (tradeValue >= 10) {
+            shares -= qty;
+            cash += tradeValue;
+            trades.push({ date: dates[i], signal: sellLabel, action: 'Verkauf', price, tradeValue, cash, position: shares * price, index: i });
+            markerSells.push({ x: dates[i], y: cash + shares * price });
+          }
+        }
+
+        equity.push(cash + shares * price);
+        dca.push(dcaShares * price);
+      }
+
+      return {
+        dates,
+        equity,
+        bench,
+        dca,
+        trades,
+        markerBuys,
+        markerSells,
+        finalValue: equity[equity.length - 1],
+        returnPct: (equity[equity.length - 1] / params.initialCapital - 1) * 100,
+        benchPct: (bench[bench.length - 1] / params.initialCapital - 1) * 100,
+        dcaPct: investedDca > 0 ? (dca[dca.length - 1] / investedDca - 1) * 100 : 0
+      };
+    }
+
+    let chart;
+    function renderChart(result, showTradeMarkers) {
+      const ctx = document.getElementById('equityChart');
+      if (chart) chart.destroy();
+      const datasets = [
+        { label: 'Strategie', data: result.equity, borderColor: '#01696f', backgroundColor: 'transparent', pointRadius: 0, tension: 0.15 },
+        { label: 'Buy & Hold', data: result.bench, borderColor: '#964219', backgroundColor: 'transparent', pointRadius: 0, tension: 0.15 },
+        { label: 'Sparplan', data: result.dca, borderColor: '#d4a400', backgroundColor: 'transparent', pointRadius: 0, tension: 0.15 }
+      ];
+      if (showTradeMarkers) {
+        datasets.push({ label: 'Käufe', data: result.markerBuys, type: 'scatter', showLine: false, pointRadius: 4, pointHoverRadius: 5, pointBackgroundColor: '#2e8b57' });
+        datasets.push({ label: 'Verkäufe', data: result.markerSells, type: 'scatter', showLine: false, pointRadius: 4, pointHoverRadius: 5, pointBackgroundColor: '#d62828' });
+      }
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: result.dates, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 10 } },
+            y: { ticks: { callback: value => '€' + Number(value).toFixed(0) } }
+          }
+        }
+      });
+    }
+
+    function fmtMoney(v) { return '€' + Number(v).toFixed(2); }
+    function fmtPct(v) { return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%'; }
+
+    function renderTrades(trades) {
+      const body = document.getElementById('tradesBody');
+      if (!trades.length) {
+        body.innerHTML = '<tr><td colspan="7">Keine Trades erzeugt.</td></tr>';
+        return;
+      }
+      body.innerHTML = trades.map(t => `
+        <tr>
+          <td>${t.date}</td>
+          <td>${t.signal}</td>
+          <td>${t.action}</td>
+          <td>${fmtMoney(t.price)}</td>
+          <td>${fmtMoney(t.tradeValue)}</td>
+          <td>${fmtMoney(t.cash)}</td>
+          <td>${fmtMoney(t.position)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+      const params = {
+        variant: document.getElementById('variant').value,
+        initialCapital: Number(document.getElementById('initialCapital').value),
+        monthlyContribution: Number(document.getElementById('monthlyContribution').value),
+        years: Number(document.getElementById('years').value),
+        rsiBuy: Number(document.getElementById('rsiBuy').value),
+        rsiSell: Number(document.getElementById('rsiSell').value),
+        rsiMaLen: Number(document.getElementById('rsiMaLen').value),
+        smaLen: Number(document.getElementById('smaLen').value),
+        emaLen: Number(document.getElementById('emaLen').value),
+        buyPct: Number(document.getElementById('buyPct').value),
+        sellPct: Number(document.getElementById('sellPct').value),
+        emaFilter: document.getElementById('emaFilter').checked
+      };
+      if (!apiKey) return setStatus('Bitte einen Twelve-Data-API-Key eintragen.', 'error');
+      if (!symbol) return setStatus('Bitte ein Symbol angeben.', 'error');
+      if (!(params.initialCapital >= 10)) return setStatus('Das Anfangskapital muss mindestens 10 € betragen.', 'error');
+      try {
+        setStatus('Lade Kursdaten von Twelve Data …');
+        const rows = await fetchDailyData(symbol, params.years, apiKey);
+        setStatus(`Berechne Backtest mit ${rows.length} Tagesdaten …`);
+        const result = backtest(rows, params);
+        document.getElementById('mFinal').textContent = fmtMoney(result.finalValue);
+        document.getElementById('mReturn').textContent = fmtPct(result.returnPct);
+        document.getElementById('mBench').textContent = fmtPct(result.benchPct);
+        document.getElementById('mDca').textContent = fmtPct(result.dcaPct);
+        document.getElementById('mTrades').textContent = String(result.trades.length);
+        document.getElementById('mPreset').textContent = params.variant;
+        renderChart(result, document.getElementById('showTradeMarkers').checked);
+        renderTrades(result.trades);
+        setStatus('Backtest erfolgreich abgeschlossen.', 'success');
+      } catch (err) {
+        setStatus(err.message || 'Fehler beim Laden oder Berechnen.', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
