@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strategy Backtester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --font-body: 'Instrument Sans', Inter, system-ui, sans-serif;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #f3f0ec; --color-border: #d4d1ca;
+      --color-text: #28251d; --color-text-muted: #6f6d67; --color-text-faint: #9b9992; --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
+      --color-success: #437a22; --color-warning: #964219; --color-error: #a12c7b;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 12px 32px rgba(0,0,0,0.12);
+      --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      --content-wide: 1200px;
+    }
+    [data-theme="dark"] {
+      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #1d1c1a; --color-border: #393836;
+      --color-text: #cdccca; --color-text-muted: #9a9895; --color-text-faint: #6f6d68; --color-text-inverse: #2b2a28;
+      --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
+      --color-success: #6daa45; --color-warning: #bb653b; --color-error: #d163a7;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2); --shadow-md: 0 4px 12px rgba(0,0,0,0.3); --shadow-lg: 0 12px 32px rgba(0,0,0,0.4);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { margin: 0; min-height: 100vh; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.6; color: var(--color-text); background: var(--color-bg); }
+    button, input, select { font: inherit; color: inherit; }
+    a, button, input, select { transition: color var(--transition-interactive), background var(--transition-interactive), border-color var(--transition-interactive), box-shadow var(--transition-interactive); }
+    .app { max-width: var(--content-wide); margin: 0 auto; padding: var(--space-6); }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
+    .brand { display: flex; align-items: center; gap: var(--space-3); }
+    .logo { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, var(--color-primary-highlight), var(--color-surface-offset)); border: 1px solid rgba(0,0,0,0.08); }
+    .brand h1 { margin: 0; font-size: var(--text-xl); font-family: var(--font-display); font-weight: 400; }
+    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .theme-toggle { width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); background: var(--color-surface); cursor: pointer; display: grid; place-items: center; }
+    .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-6); }
+    .panel { background: var(--color-surface); border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); }
+    .sidebar { padding: var(--space-5); position: sticky; top: var(--space-6); align-self: start; }
+    .section-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin: 0 0 var(--space-4); }
+    .form-grid { display: grid; gap: var(--space-4); }
+    label { display: grid; gap: 0.35rem; font-size: var(--text-sm); color: var(--color-text-muted); }
+    input, select { width: 100%; border: 1px solid rgba(0,0,0,0.12); background: var(--color-surface-2); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; }
+    input:focus, select:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+    .hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .btn { border: 0; border-radius: var(--radius-full); padding: 0.85rem 1.15rem; cursor: pointer; min-height: 44px; }
+    .btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .btn-primary:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--color-surface-offset); color: var(--color-text); border: 1px solid rgba(0,0,0,0.1); }
+    .status { margin-top: var(--space-4); padding: 0.9rem 1rem; border-radius: var(--radius-lg); background: var(--color-surface-offset); color: var(--color-text-muted); font-size: var(--text-sm); }
+    .status.error { background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface)); color: var(--color-error); }
+    .status.success { background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface)); color: var(--color-success); }
+    .content { display: grid; gap: var(--space-6); }
+    .hero { padding: var(--space-6); }
+    .hero h2 { margin: 0 0 var(--space-2); font-size: var(--text-xl); font-family: var(--font-display); font-weight: 400; }
+    .hero p { margin: 0; color: var(--color-text-muted); max-width: 65ch; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--space-4); }
+    .metric { padding: var(--space-5); }
+    .metric .label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+    .metric .value { margin-top: var(--space-2); font-size: var(--text-lg); font-weight: 700; }
+    .chart-card, .table-card { padding: var(--space-5); }
+    canvas { width: 100% !important; height: 360px !important; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.8rem 0.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); font-size: var(--text-sm); }
+    th { color: var(--color-text-muted); font-weight: 600; }
+    .pill { display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); background: var(--color-primary-highlight); color: var(--color-primary); font-size: var(--text-xs); }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static; } .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 640px) { .app { padding: var(--space-4); } .header { align-items: flex-start; } .metrics { grid-template-columns: 1fr; } .actions { flex-direction: column; } .btn { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-label="Strategy Lab Logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 16L9 11L13 15L20 8" />
+            <path d="M18 8H20V10" />
+            <path d="M4 20H20" />
+          </svg>
+        </div>
+        <div>
+          <h1>Strategy Lab</h1>
+          <p>Browser-Backtester mit kostenloser Twelve-Data-Anbindung</p>
+        </div>
+      </div>
+      <button class="theme-toggle" data-theme-toggle aria-label="Theme umschalten">◐</button>
+    </header>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <p class="section-title">Daten & Strategie</p>
+        <div class="form-grid">
+          <label>API-Key
+            <input id="apiKey" type="text" placeholder="Twelve Data API-Key" />
+          </label>
+          <div class="hint">Der Key bleibt nur in dieser Browser-Sitzung. Nicht fest im öffentlichen Repo speichern.</div>
+          <label>Symbol
+            <input id="symbol" type="text" value="AAPL" />
+          </label>
+          <label>Jahre Historie
+            <input id="years" type="number" min="1" max="15" step="1" value="5" />
+          </label>
+          <label>Preset
+            <select id="variant">
+              <option value="balanced">Balanced</option>
+              <option value="defensive">Defensive</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+          </label>
+          <label>RSI Buy unter
+            <input id="rsiBuy" type="number" min="1" max="99" step="1" value="35" />
+          </label>
+          <label>RSI Sell über
+            <input id="rsiSell" type="number" min="1" max="99" step="1" value="67" />
+          </label>
+          <label>EMA-Länge
+            <input id="emaLen" type="number" min="5" max="300" step="1" value="200" />
+          </label>
+          <label>Buy-Einsatz (% Cash)
+            <input id="buyPct" type="number" min="1" max="100" step="1" value="25" />
+          </label>
+          <label>Sell-Anteil (% Position)
+            <input id="sellPct" type="number" min="1" max="100" step="1" value="25" />
+          </label>
+          <label><input id="emaFilter" type="checkbox" checked /> Nur kaufen, wenn Kurs über EMA liegt</label>
+          <div class="actions">
+            <button class="btn btn-primary" id="runBtn">Backtest starten</button>
+            <button class="btn btn-secondary" id="presetBtn">Preset laden</button>
+          </div>
+          <div id="status" class="status">Bereit. Trage deinen Twelve-Data-Key ein und starte den Backtest.</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="panel hero">
+          <span class="pill">Kostenlose Datenquelle</span>
+          <h2>Historische Tagesdaten über Twelve Data</h2>
+          <p>Die App lädt Tagesdaten per time_series-Endpoint, berechnet RSI und EMA direkt im Browser und vergleicht die Strategie mit Buy-and-Hold.</p>
+        </section>
+
+        <section class="metrics">
+          <div class="panel metric"><div class="label">Endwert</div><div class="value" id="mFinal">—</div></div>
+          <div class="panel metric"><div class="label">Return</div><div class="value" id="mReturn">—</div></div>
+          <div class="panel metric"><div class="label">Buy & Hold</div><div class="value" id="mBench">—</div></div>
+          <div class="panel metric"><div class="label">Trades</div><div class="value" id="mTrades">—</div></div>
+        </section>
+
+        <section class="panel chart-card">
+          <p class="section-title">Equity-Kurve</p>
+          <canvas id="equityChart"></canvas>
+        </section>
+
+        <section class="panel table-card">
+          <p class="section-title">Letzte Trades</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Signal</th>
+                <th>Aktion</th>
+                <th>Preis</th>
+                <th>Cash</th>
+                <th>Position</th>
+              </tr>
+            </thead>
+            <tbody id="tradesBody">
+              <tr><td colspan="6">Noch keine Berechnung gestartet.</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.setAttribute('data-theme', theme);
+    document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', theme);
+    });
+
+    const presets = {
+      balanced: { rsiBuy: 35, rsiSell: 67, emaLen: 200, buyPct: 25, sellPct: 25, emaFilter: true },
+      defensive: { rsiBuy: 30, rsiSell: 70, emaLen: 220, buyPct: 20, sellPct: 20, emaFilter: true },
+      aggressive: { rsiBuy: 40, rsiSell: 62, emaLen: 100, buyPct: 35, sellPct: 35, emaFilter: false }
+    };
+
+    const setStatus = (msg, kind = '') => {
+      const el = document.getElementById('status');
+      el.className = `status ${kind}`.trim();
+      el.textContent = msg;
+    };
+
+    document.getElementById('presetBtn').addEventListener('click', () => {
+      const p = presets[document.getElementById('variant').value];
+      document.getElementById('rsiBuy').value = p.rsiBuy;
+      document.getElementById('rsiSell').value = p.rsiSell;
+      document.getElementById('emaLen').value = p.emaLen;
+      document.getElementById('buyPct').value = p.buyPct;
+      document.getElementById('sellPct').value = p.sellPct;
+      document.getElementById('emaFilter').checked = p.emaFilter;
+      setStatus('Preset geladen.', 'success');
+    });
+
+    function ema(values, period) {
+      const k = 2 / (period + 1);
+      const out = Array(values.length).fill(null);
+      let prev = null;
+      for (let i = 0; i < values.length; i++) {
+        const v = values[i];
+        if (v == null) continue;
+        prev = prev == null ? v : v * k + prev * (1 - k);
+        out[i] = prev;
+      }
+      return out;
+    }
+
+    function rsi(values, period = 14) {
+      const out = Array(values.length).fill(null);
+      if (values.length <= period) return out;
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= period; i++) {
+        const ch = values[i] - values[i - 1];
+        if (ch >= 0) gains += ch; else losses -= ch;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      out[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+      for (let i = period + 1; i < values.length; i++) {
+        const ch = values[i] - values[i - 1];
+        const gain = Math.max(ch, 0);
+        const loss = Math.max(-ch, 0);
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        out[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+      }
+      return out;
+    }
+
+    async function fetchDailyData(symbol, years, apiKey) {
+      const end = new Date();
+      const start = new Date();
+      start.setFullYear(end.getFullYear() - years);
+      const url = new URL('https://api.twelvedata.com/time_series');
+      url.searchParams.set('symbol', symbol);
+      url.searchParams.set('interval', '1day');
+      url.searchParams.set('outputsize', String(Math.min(5000, Math.max(400, years * 260 + 50))));
+      url.searchParams.set('format', 'JSON');
+      url.searchParams.set('apikey', apiKey);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (data.status === 'error') throw new Error(data.message || 'API-Fehler');
+      if (!data.values || !Array.isArray(data.values)) throw new Error('Keine Kursdaten gefunden.');
+      const rows = data.values
+        .map(v => ({ date: v.datetime.slice(0,10), close: Number(v.close) }))
+        .filter(v => Number.isFinite(v.close) && v.date >= start.toISOString().slice(0,10))
+        .sort((a,b) => a.date.localeCompare(b.date));
+      if (rows.length < 60) throw new Error('Zu wenige historische Daten für einen sinnvollen Backtest.');
+      return rows;
+    }
+
+    function backtest(rows, params) {
+      const dates = rows.map(r => r.date);
+      const closes = rows.map(r => r.close);
+      const emaArr = ema(closes, params.emaLen);
+      const rsiArr = rsi(closes, 14);
+      let cash = 1000;
+      let shares = 0;
+      const equity = [];
+      const bench = [];
+      const benchShares = 1000 / closes[0];
+      const trades = [];
+      for (let i = 0; i < closes.length; i++) {
+        const price = closes[i];
+        const signalBuy = rsiArr[i] != null && rsiArr[i] < params.rsiBuy;
+        const signalSell = rsiArr[i] != null && rsiArr[i] > params.rsiSell;
+        const emaOk = !params.emaFilter || (emaArr[i] != null && price > emaArr[i]);
+        if (signalBuy && emaOk && cash > 1) {
+          const spend = cash * (params.buyPct / 100);
+          const qty = spend / price;
+          if (qty > 0) {
+            shares += qty;
+            cash -= qty * price;
+            trades.push({ date: dates[i], signal: 'RSI Buy', action: 'Kauf', price, cash, position: shares * price });
+          }
+        } else if (signalSell && shares > 0) {
+          const qty = shares * (params.sellPct / 100);
+          if (qty > 0) {
+            shares -= qty;
+            cash += qty * price;
+            trades.push({ date: dates[i], signal: 'RSI Sell', action: 'Verkauf', price, cash, position: shares * price });
+          }
+        }
+        equity.push(cash + shares * price);
+        bench.push(benchShares * price);
+      }
+      return {
+        dates,
+        equity,
+        bench,
+        trades,
+        finalValue: equity[equity.length - 1],
+        returnPct: (equity[equity.length - 1] / 1000 - 1) * 100,
+        benchPct: (bench[bench.length - 1] / 1000 - 1) * 100
+      };
+    }
+
+    let chart;
+    function renderChart(result) {
+      const ctx = document.getElementById('equityChart');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: result.dates,
+          datasets: [
+            { label: 'Strategie', data: result.equity, borderColor: '#01696f', pointRadius: 0, tension: 0.15 },
+            { label: 'Buy & Hold', data: result.bench, borderColor: '#964219', pointRadius: 0, tension: 0.15 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 10 } },
+            y: { ticks: { callback: value => '€' + Number(value).toFixed(0) } }
+          }
+        }
+      });
+    }
+
+    function fmtMoney(v) { return '€' + v.toFixed(2); }
+    function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+    function renderTrades(trades) {
+      const body = document.getElementById('tradesBody');
+      if (!trades.length) {
+        body.innerHTML = '<tr><td colspan="6">Keine Trades erzeugt.</td></tr>';
+        return;
+      }
+      body.innerHTML = trades.slice(-12).reverse().map(t => `
+        <tr>
+          <td>${t.date}</td>
+          <td>${t.signal}</td>
+          <td>${t.action}</td>
+          <td>${fmtMoney(t.price)}</td>
+          <td>${fmtMoney(t.cash)}</td>
+          <td>${fmtMoney(t.position)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+      const years = Number(document.getElementById('years').value);
+      const params = {
+        rsiBuy: Number(document.getElementById('rsiBuy').value),
+        rsiSell: Number(document.getElementById('rsiSell').value),
+        emaLen: Number(document.getElementById('emaLen').value),
+        buyPct: Number(document.getElementById('buyPct').value),
+        sellPct: Number(document.getElementById('sellPct').value),
+        emaFilter: document.getElementById('emaFilter').checked
+      };
+      if (!apiKey) return setStatus('Bitte einen Twelve-Data-API-Key eintragen.', 'error');
+      if (!symbol) return setStatus('Bitte ein Symbol angeben.', 'error');
+      try {
+        setStatus('Lade Kursdaten von Twelve Data …');
+        const rows = await fetchDailyData(symbol, years, apiKey);
+        setStatus(`Berechne Backtest mit ${rows.length} Tagesdaten …`);
+        const result = backtest(rows, params);
+        document.getElementById('mFinal').textContent = fmtMoney(result.finalValue);
+        document.getElementById('mReturn').textContent = fmtPct(result.returnPct);
+        document.getElementById('mBench').textContent = fmtPct(result.benchPct);
+        document.getElementById('mTrades').textContent = String(result.trades.length);
+        renderChart(result);
+        renderTrades(result.trades);
+        setStatus('Backtest erfolgreich abgeschlossen.', 'success');
+      } catch (err) {
+        setStatus(err.message || 'Fehler beim Laden oder Berechnen.', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
